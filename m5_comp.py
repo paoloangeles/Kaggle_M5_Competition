@@ -7,6 +7,11 @@ Created on Mon May  4 19:51:01 2020
 """
 
 import pandas as pd
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import numpy as np
+import os
+import tensorflow as tf
 
 calendar = pd.read_csv("calendar.csv")
 sell_prices = pd.read_csv("sell_prices.csv")
