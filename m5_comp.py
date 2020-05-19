@@ -9,17 +9,20 @@ Created on Mon May  4 19:51:01 2020
 # Import modules
 
 import pandas as pd
-import matplotlib.pyplot as plt
 
+# Get data from pickle files
+calendar = pd.read_pickle("./calendar.pkl")
+sell_prices = pd.read_pickle("./sell_prices.pkl")
+sales_train_validation = pd.read_pickle("./sales_train_validation.pkl")
 
-# Get data from csvs
-calendar = pd.read_csv("calendar.csv")
-sell_prices = pd.read_csv("sell_prices.csv")
-sales_train = pd.read_csv("sales_train_validation.csv")
+# Plot visualisation
 
-number_of_days = 1913
-a = []
+# Product id
+product_id = 0
 
-for product in range(len(sales_train)):
-    for day in range(number_of_days):
-        a.append(sales_train.at[product, 'd_'+str(day+1)])
+# Time constraints
+start_index_sales = 6
+year = 25
+days_in_year = 365
+
+sales_train_validation.iloc[product_id, ((year-1)*days_in_year)+start_index_sales:(year*days_in_year)+start_index_sales+1].plot.line()
