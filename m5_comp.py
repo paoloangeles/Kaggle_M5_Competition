@@ -13,7 +13,6 @@ Created on Mon May 4 19:51:01 2020
 import pandas as pd
 import numpy as np
 import matplotlib.pylab as plt
-import seaborn as sns
 from itertools import cycle
 from scipy import signal
 
@@ -241,92 +240,132 @@ sell_price_features_final['week_halfyear'] = ""
 sell_price_features_final['week_year'] = ""
 sell_price_features_final['week_all'] = ""
 
-sell_price_features['month_average_test'] = sell_price_features.groupby(['store_id', 'item_id'])['sell_price'].transform(lambda x: x.rolling(4, min_periods = 1).mean())
-sell_price_features['half_year_average_test'] = sell_price_features.groupby(['store_id', 'item_id'])['sell_price'].transform(lambda x: x.rolling(26, min_periods = 1).mean())
-sell_price_features['year_average_test'] = sell_price_features.groupby(['store_id', 'item_id'])['sell_price'].transform(lambda x: x.rolling(52, min_periods = 1).mean())
-sell_price_features['average_test'] = sell_price_features.groupby(['store_id', 'item_id'])['sell_price'].transform(lambda x: x.expanding().mean())
 
-for store in sell_prices['store_id'].unique():
-    for item in sell_prices['item_id'].unique():
 
-        ## Need to iterate over all products and all stores 
-        sell_price_DF = sell_prices.loc[(sell_prices['store_id'] == store) & (sell_prices['item_id'] == item)]
+## Create feature matrix
+sell_price_features = pd.DataFrame()
+
+## Create appropriate reference indexes
+# sell_price_features['d'] = calendar['d']
+sell_price_features['wm_yr_wk'] = calendar['wm_yr_wk'].unique()
+
+## Merge sell prices to feature matrix
+sell_price_features = sell_price_features.merge(sell_prices, on='wm_yr_wk', how='left')
+
+## Drop all nans
+sell_price_features = sell_price_features.drop(sell_price_features[sell_price_features['sell_price'].astype(str) == 'nan'].index)
+
+sell_price_features['month_average_price'] = sell_price_features.groupby(['store_id', 'item_id'])['sell_price'].transform(lambda x: x.rolling(4, min_periods = 1).mean())
+sell_price_features['half_year_average_price'] = sell_price_features.groupby(['store_id', 'item_id'])['sell_price'].transform(lambda x: x.rolling(26, min_periods = 1).mean())
+sell_price_features['year_average_price'] = sell_price_features.groupby(['store_id', 'item_id'])['sell_price'].transform(lambda x: x.rolling(52, min_periods = 1).mean())
+sell_price_features['average_price'] = sell_price_features.groupby(['store_id', 'item_id'])['sell_price'].transform(lambda x: x.expanding().mean())
+
+def assign_sell_price_feature(price):
+    
+    if (((price[0] - price[1])/price[1]) > -0.025) and (((price[0] - price[1])/price[1]) < 0):
+        return 3
+    ## if weekly average is 25-50% lower, assign a 2
+    elif (((price[0] - price[1])/price[1]) <= -0.025) and (((price[0] - price[1])/price[1]) > -0.05):
+        return 2
+    ## if weekly average is 50%+ lower, assign a 3
+    elif ((price[0] - price[1])/price[1]) < -0.05:
+        return 1
+    ## if weekly average is 0-25% higher, assign a 4
+    if (((price[0] - price[1])/price[1]) < 0.025) and (((price[0] - price[1])/price[1]) >= 0):
+        return 4
+    ## if weekly average is 25-50% higher, assign a 5
+    elif (((price[0] - price[1])/price[1]) >= 0.025) and (((price[0] - price[1])/price[1]) < 0.05):
+        return 5
+    ## if weekly average is 50%+ higher, assign a 6
+    elif ((price[0] - price[1])/price[1]) > 0.05:
+        return 6
+
+sell_price_features['week_month'] = sell_price_features[['sell_price', 'month_average_price']].apply(assign_sell_price_feature, axis = 1)
+sell_price_features['week_halfyear'] = sell_price_features[['sell_price', 'half_year_average_price']].apply(assign_sell_price_feature, axis = 1)
+sell_price_features['week_year'] = sell_price_features[['sell_price', 'year_average_price']].apply(assign_sell_price_feature, axis = 1)
+sell_price_features['week_all'] = sell_price_features[['sell_price', 'average_price']].apply(assign_sell_price_feature, axis = 1)
+
+# for store in sell_prices['store_id'].unique():
+#     for item in sell_prices['item_id'].unique():
+
+#         ## Need to iterate over all products and all stores 
+#         sell_price_DF = sell_prices.loc[(sell_prices['store_id'] == store) & (sell_prices['item_id'] == item)]
         
         
-        ## Create feature matrix
-        sell_price_features = pd.DataFrame()
+#         ## Create feature matrix
+#         sell_price_features = pd.DataFrame()
         
-        ## Create appropriate reference indexes
-        # sell_price_features['d'] = calendar['d']
-        sell_price_features['wm_yr_wk'] = calendar['wm_yr_wk'].unique()
+#         ## Create appropriate reference indexes
+#         # sell_price_features['d'] = calendar['d']
+#         sell_price_features['wm_yr_wk'] = calendar['wm_yr_wk'].unique()
         
-        ## Merge sell prices to feature matrix
-        sell_price_features = sell_price_features.merge(sell_price_DF, on='wm_yr_wk', how='left')
+#         ## Merge sell prices to feature matrix
+#         sell_price_features = sell_price_features.merge(sell_price_DF, on='wm_yr_wk', how='left')
         
-        ## Drop all nans
-        sell_price_features = sell_price_features.drop(sell_price_features[sell_price_features['sell_price'].astype(str) == 'nan'].index)
+#         ## Drop all nans
+#         sell_price_features = sell_price_features.drop(sell_price_features[sell_price_features['sell_price'].astype(str) == 'nan'].index)
         
-        ## Create feature columns
-        sell_price_features['week_month'] =  ""
-        sell_price_features['week_halfyear'] = ""
-        sell_price_features['week_year'] = ""
-        sell_price_features['week_all'] = ""
-        
-        
-        ## Define specific time horizons
-        start_wm_yr_wk = sell_price_features.loc[sell_price_features.index[0], 'wm_yr_wk']
-        weeks_in_month = 4
-        weeks_in_halfyear = 26
-        weeks_in_year = 52
+#         ## Create feature columns
+#         sell_price_features['week_month'] =  ""
+#         sell_price_features['week_halfyear'] = ""
+#         sell_price_features['week_year'] = ""
+#         sell_price_features['week_all'] = ""
         
         
-        ## Iterate through all weeks with sell prices
-        for week in sell_price_features['wm_yr_wk'].unique():
+#         ## Define specific time horizons
+#         start_wm_yr_wk = sell_price_features.loc[sell_price_features.index[0], 'wm_yr_wk']
+#         weeks_in_month = 4
+#         weeks_in_halfyear = 26
+#         weeks_in_year = 52
+        
+        
+#         ## Iterate through all weeks with sell prices
+#         for week in sell_price_features['wm_yr_wk'].unique():
             
-            ## Assign appropriate indexes for each time horizon (if start horizon index is less than original start index, this is not possible so force value to original start index)
-            if week - weeks_in_month < start_wm_yr_wk:
-                month_index = start_wm_yr_wk
-            else:
-                month_index = week - weeks_in_month
+#             ## Assign appropriate indexes for each time horizon (if start horizon index is less than original start index, this is not possible so force value to original start index)
+#             if week - weeks_in_month < start_wm_yr_wk:
+#                 month_index = start_wm_yr_wk
+#             else:
+#                 month_index = week - weeks_in_month
                 
-            if week - weeks_in_halfyear < start_wm_yr_wk:
-                halfyear_index = start_wm_yr_wk
-            else:
-                halfyear_index = week - weeks_in_halfyear
+#             if week - weeks_in_halfyear < start_wm_yr_wk:
+#                 halfyear_index = start_wm_yr_wk
+#             else:
+#                 halfyear_index = week - weeks_in_halfyear
                 
-            if week - weeks_in_year < start_wm_yr_wk:
-                year_index = start_wm_yr_wk
-            else:
-                year_index = week - weeks_in_year
+#             if week - weeks_in_year < start_wm_yr_wk:
+#                 year_index = start_wm_yr_wk
+#             else:
+#                 year_index = week - weeks_in_year
             
-            av_week = sell_price_features.loc[sell_price_features['wm_yr_wk'] == week, 'sell_price'].mean()
-            av_month = sell_price_features.loc[(sell_price_features['wm_yr_wk'] >= month_index) & (sell_price_features['wm_yr_wk'] <= week), 'sell_price'].mean()
-            av_halfyear = sell_price_features.loc[(sell_price_features['wm_yr_wk'] >= halfyear_index) & (sell_price_features['wm_yr_wk'] <= week), 'sell_price'].mean()
-            av_year = sell_price_features.loc[(sell_price_features['wm_yr_wk'] >= year_index) & (sell_price_features['wm_yr_wk'] <= week), 'sell_price'].mean()
-            av_all = sell_price_features.loc[(sell_price_features['wm_yr_wk'] >= start_wm_yr_wk) & (sell_price_features['wm_yr_wk'] <= week), 'sell_price'].mean()
+#             av_week = sell_price_features.loc[sell_price_features['wm_yr_wk'] == week, 'sell_price'].mean()
+#             av_month = sell_price_features.loc[(sell_price_features['wm_yr_wk'] >= month_index) & (sell_price_features['wm_yr_wk'] <= week), 'sell_price'].mean()
+#             av_halfyear = sell_price_features.loc[(sell_price_features['wm_yr_wk'] >= halfyear_index) & (sell_price_features['wm_yr_wk'] <= week), 'sell_price'].mean()
+#             av_year = sell_price_features.loc[(sell_price_features['wm_yr_wk'] >= year_index) & (sell_price_features['wm_yr_wk'] <= week), 'sell_price'].mean()
+#             av_all = sell_price_features.loc[(sell_price_features['wm_yr_wk'] >= start_wm_yr_wk) & (sell_price_features['wm_yr_wk'] <= week), 'sell_price'].mean()
             
-            time_horizon = [av_month, av_halfyear, av_year, av_all]
-            column_names = ['week_month', 'week_halfyear', 'week_year', 'week_all']
+#             time_horizon = [av_month, av_halfyear, av_year, av_all]
+#             column_names = ['week_month', 'week_halfyear', 'week_year', 'week_all']
             
-            ## iterate for each time horizon
-            for i, val in enumerate(time_horizon):
-                ## if weekly average is 0-25% lower, assign a 1
-                if (((av_week - val)/val) > -0.025) and (((av_week - val)/val) < 0):
-                    sell_price_features.loc[sell_price_features['wm_yr_wk'] == week, column_names[i]] = 1
-                ## if weekly average is 25-50% lower, assign a 2
-                elif (((av_week - val)/val) <= -0.025) and (((av_week - val)/val) > -0.05):
-                    sell_price_features.loc[sell_price_features['wm_yr_wk'] == week, column_names[i]] = 2
-                ## if weekly average is 50%+ lower, assign a 3
-                elif ((av_week - val)/val) < -0.05:
-                    sell_price_features.loc[sell_price_features['wm_yr_wk'] == week, column_names[i]] = 3
-                ## if weekly average is 0-25% higher, assign a 4
-                if (((av_week - val)/val) < 0.025) and (((av_week - val)/val) >= 0):
-                    sell_price_features.loc[sell_price_features['wm_yr_wk'] == week, column_names[i]] = 4
-                ## if weekly average is 25-50% higher, assign a 5
-                elif (((av_week - val)/val) >= 0.025) and (((av_week - val)/val) < 0.05):
-                    sell_price_features.loc[sell_price_features['wm_yr_wk'] == week, column_names[i]] = 5
-                ## if weekly average is 50%+ higher, assign a 6
-                elif ((av_week - val)/val) > 0.05:
-                    sell_price_features.loc[sell_price_features['wm_yr_wk'] == week, column_names[i]] = 6
+#             ## iterate for each time horizon
+#             for i, val in enumerate(time_horizon):
+#                 ## if weekly average is 0-25% lower, assign a 1
+#                 if (((av_week - val)/val) > -0.025) and (((av_week - val)/val) < 0):
+#                     sell_price_features.loc[sell_price_features['wm_yr_wk'] == week, column_names[i]] = 1
+#                 ## if weekly average is 25-50% lower, assign a 2
+#                 elif (((av_week - val)/val) <= -0.025) and (((av_week - val)/val) > -0.05):
+#                     sell_price_features.loc[sell_price_features['wm_yr_wk'] == week, column_names[i]] = 2
+#                 ## if weekly average is 50%+ lower, assign a 3
+#                 elif ((av_week - val)/val) < -0.05:
+#                     sell_price_features.loc[sell_price_features['wm_yr_wk'] == week, column_names[i]] = 3
+#                 ## if weekly average is 0-25% higher, assign a 4
+#                 if (((av_week - val)/val) < 0.025) and (((av_week - val)/val) >= 0):
+#                     sell_price_features.loc[sell_price_features['wm_yr_wk'] == week, column_names[i]] = 4
+#                 ## if weekly average is 25-50% higher, assign a 5
+#                 elif (((av_week - val)/val) >= 0.025) and (((av_week - val)/val) < 0.05):
+#                     sell_price_features.loc[sell_price_features['wm_yr_wk'] == week, column_names[i]] = 5
+#                 ## if weekly average is 50%+ higher, assign a 6
+#                 elif ((av_week - val)/val) > 0.05:
+#                     sell_price_features.loc[sell_price_features['wm_yr_wk'] == week, column_names[i]] = 6
                     
-        sell_price_features_final = sell_price_features_final.append(sell_price_features, ignore_index = True)
+#         sell_price_features_final = sell_price_features_final.append(sell_price_features, ignore_index = True)
