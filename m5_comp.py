@@ -260,6 +260,10 @@ sell_price_features['half_year_average_price'] = sell_price_features.groupby(['s
 sell_price_features['year_average_price'] = sell_price_features.groupby(['store_id', 'item_id'])['sell_price'].transform(lambda x: x.rolling(52, min_periods = 1).mean())
 sell_price_features['average_price'] = sell_price_features.groupby(['store_id', 'item_id'])['sell_price'].transform(lambda x: x.expanding().mean())
 
+
+
+sell_price_features = pd.read_pickle("./sell_price_features.pkl")
+
 def assign_sell_price_feature(price):
     
     if (((price[0] - price[1])/price[1]) > -0.025) and (((price[0] - price[1])/price[1]) < 0):
@@ -284,6 +288,8 @@ sell_price_features['week_month'] = sell_price_features[['sell_price', 'month_av
 sell_price_features['week_halfyear'] = sell_price_features[['sell_price', 'half_year_average_price']].apply(assign_sell_price_feature, axis = 1)
 sell_price_features['week_year'] = sell_price_features[['sell_price', 'year_average_price']].apply(assign_sell_price_feature, axis = 1)
 sell_price_features['week_all'] = sell_price_features[['sell_price', 'average_price']].apply(assign_sell_price_feature, axis = 1)
+
+sell_price_features.to_pickle("./sell_price_features.pkl")
 
 # for store in sell_prices['store_id'].unique():
 #     for item in sell_prices['item_id'].unique():

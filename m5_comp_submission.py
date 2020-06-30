@@ -6,7 +6,7 @@ Created on Tue Jun 23 09:52:44 2020
 """
 import numpy as np
 import pandas as pd
-import plotly.express as px
+# import plotly.express as px
 import gc
 import joblib
 from lightgbm import LGBMRegressor
@@ -77,6 +77,8 @@ prices = pd.read_pickle("./prices.pkl")
 ## MELT & COMBINE ALL DATAFRAMES ##
 ## Melt Sales dataframe to have key column identifiers of ID, item ID, department ID, category ID, store ID and state ID
 ## Melt unpivots columns not specified by id_vars to be used as values in the table
+## id_vars are the columns which will not be unpivoted - will still be used as the reference index
+
 
 df = pd.melt(sales, id_vars=['id', 'item_id', 'dept_id', 'cat_id', 'store_id', 'state_id'], var_name='d', value_name='sold').dropna()
 
@@ -110,57 +112,57 @@ d_cat_id = dict(zip(df.cat_id.cat.codes, df.cat_id))
 d_store_id = dict(zip(df.store_id.cat.codes, df.store_id))
 d_state_id = dict(zip(df.state_id.cat.codes, df.state_id))
 
-# ## Label encode categorical features
-# df.d = df['d'].apply(lambda x: x.split('_')[1]).astype(np.int16) ## change day number to regular integer number
-# ## Convert categories to code - label encode
-# cols = df.dtypes.index.tolist()
-# types = df.dtypes.values.tolist()
-# for i,type in enumerate(types):
-#     if type.name == 'category':
-#         df[cols[i]] = df[cols[i]].cat.codes
+## Label encode categorical features
+df.d = df['d'].apply(lambda x: x.split('_')[1]).astype(np.int16) ## change day number to regular integer number
+## Convert categories to code - label encode
+cols = df.dtypes.index.tolist()
+types = df.dtypes.values.tolist()
+for i,type in enumerate(types):
+    if type.name == 'category':
+        df[cols[i]] = df[cols[i]].cat.codes
         
-# ## Remove date as features present
-# df.drop('date',axis=1,inplace=True)    
+## Remove date as features present
+df.drop('date',axis=1,inplace=True)    
 
-# ## Create lag features
-# lags = [1,2,3,6,12,24,36]
-# for lag in lags:
-#     df['sold_lag_'+str(lag)] = df.groupby(['id', 'item_id', 'dept_id', 'cat_id', 'store_id', 'state_id'],as_index=False)['sold'].shift(lag).astype(np.float16)
+## Create lag features
+lags = [1,2,3,6,12,24,36]
+for lag in lags:
+    df['sold_lag_'+str(lag)] = df.groupby(['id', 'item_id', 'dept_id', 'cat_id', 'store_id', 'state_id'],as_index=False)['sold'].shift(lag).astype(np.float16)
     
     
-# ## Create mean features grouped by particular categories
-# df['iteam_sold_avg'] = df.groupby('item_id')['sold'].transform('mean').astype(np.float16)
-# df['state_sold_avg'] = df.groupby('state_id')['sold'].transform('mean').astype(np.float16)
-# df['store_sold_avg'] = df.groupby('store_id')['sold'].transform('mean').astype(np.float16)
-# df['cat_sold_avg'] = df.groupby('cat_id')['sold'].transform('mean').astype(np.float16)
-# df['dept_sold_avg'] = df.groupby('dept_id')['sold'].transform('mean').astype(np.float16)
-# df['cat_dept_sold_avg'] = df.groupby(['cat_id','dept_id'])['sold'].transform('mean').astype(np.float16)
-# df['store_item_sold_avg'] = df.groupby(['store_id','item_id'])['sold'].transform('mean').astype(np.float16)
-# df['cat_item_sold_avg'] = df.groupby(['cat_id','item_id'])['sold'].transform('mean').astype(np.float16)
-# df['dept_item_sold_avg'] = df.groupby(['dept_id','item_id'])['sold'].transform('mean').astype(np.float16)
-# df['state_store_sold_avg'] = df.groupby(['state_id','store_id'])['sold'].transform('mean').astype(np.float16)
-# df['state_store_cat_sold_avg'] = df.groupby(['state_id','store_id','cat_id'])['sold'].transform('mean').astype(np.float16)
-# df['store_cat_dept_sold_avg'] = df.groupby(['store_id','cat_id','dept_id'])['sold'].transform('mean').astype(np.float16)
+## Create mean features grouped by particular categories
+df['iteam_sold_avg'] = df.groupby('item_id')['sold'].transform('mean').astype(np.float16)
+df['state_sold_avg'] = df.groupby('state_id')['sold'].transform('mean').astype(np.float16)
+df['store_sold_avg'] = df.groupby('store_id')['sold'].transform('mean').astype(np.float16)
+df['cat_sold_avg'] = df.groupby('cat_id')['sold'].transform('mean').astype(np.float16)
+df['dept_sold_avg'] = df.groupby('dept_id')['sold'].transform('mean').astype(np.float16)
+df['cat_dept_sold_avg'] = df.groupby(['cat_id','dept_id'])['sold'].transform('mean').astype(np.float16)
+df['store_item_sold_avg'] = df.groupby(['store_id','item_id'])['sold'].transform('mean').astype(np.float16)
+df['cat_item_sold_avg'] = df.groupby(['cat_id','item_id'])['sold'].transform('mean').astype(np.float16)
+df['dept_item_sold_avg'] = df.groupby(['dept_id','item_id'])['sold'].transform('mean').astype(np.float16)
+df['state_store_sold_avg'] = df.groupby(['state_id','store_id'])['sold'].transform('mean').astype(np.float16)
+df['state_store_cat_sold_avg'] = df.groupby(['state_id','store_id','cat_id'])['sold'].transform('mean').astype(np.float16)
+df['store_cat_dept_sold_avg'] = df.groupby(['store_id','cat_id','dept_id'])['sold'].transform('mean').astype(np.float16)
     
-# ## Calculate rolling window (window of 7 days) mean for items sold
-# df['rolling_sold_mean'] = df.groupby(['id', 'item_id', 'dept_id', 'cat_id', 'store_id', 'state_id'])['sold'].transform(lambda x: x.rolling(window=7).mean()).astype(np.float16)
+## Calculate rolling window (window of 7 days) mean for items sold
+df['rolling_sold_mean'] = df.groupby(['id', 'item_id', 'dept_id', 'cat_id', 'store_id', 'state_id'])['sold'].transform(lambda x: x.rolling(window=7).mean()).astype(np.float16)
 
-# ## Calculte expanding window (minimum window period of 2 days) mean for items sold
-# df['expanding_sold_mean'] = df.groupby(['id', 'item_id', 'dept_id', 'cat_id', 'store_id', 'state_id'])['sold'].transform(lambda x: x.expanding(2).mean()).astype(np.float16)
+## Calculte expanding window (minimum window period of 2 days) mean for items sold
+df['expanding_sold_mean'] = df.groupby(['id', 'item_id', 'dept_id', 'cat_id', 'store_id', 'state_id'])['sold'].transform(lambda x: x.expanding(2).mean()).astype(np.float16)
 
-# ## Calculate trend if number sold is higher or lower than all time (positive vs negative)
-# df['daily_avg_sold'] = df.groupby(['id', 'item_id', 'dept_id', 'cat_id', 'store_id', 'state_id','d'])['sold'].transform('mean').astype(np.float16)
-# df['avg_sold'] = df.groupby(['id', 'item_id', 'dept_id', 'cat_id', 'store_id', 'state_id'])['sold'].transform('mean').astype(np.float16)
-# df['selling_trend'] = (df['daily_avg_sold'] - df['avg_sold']).astype(np.float16)
-# df.drop(['daily_avg_sold','avg_sold'],axis=1,inplace=True)
+## Calculate trend if number sold is higher or lower than all time (positive vs negative)
+df['daily_avg_sold'] = df.groupby(['id', 'item_id', 'dept_id', 'cat_id', 'store_id', 'state_id','d'])['sold'].transform('mean').astype(np.float16)
+df['avg_sold'] = df.groupby(['id', 'item_id', 'dept_id', 'cat_id', 'store_id', 'state_id'])['sold'].transform('mean').astype(np.float16)
+df['selling_trend'] = (df['daily_avg_sold'] - df['avg_sold']).astype(np.float16)
+df.drop(['daily_avg_sold','avg_sold'],axis=1,inplace=True)
 
-# ## Because of the 36 day lag feature, there will be features as NaN for the first 35 days
-# df = df[df['d']>=36]
+## Because of the 36 day lag feature, there will be features as NaN for the first 35 days
+df = df[df['d']>=36]
 
 
 ## MODELLING AND PREDICTION ##
 ## Split data up to to use for validation and testing
-data = pd.read_pickle('./m5_df.pkl')
+data = df
 ## validation set = day 1914 to 1942
 valid = data[(data['d']>=1914) & (data['d']<1942)][['id','d','sold']]
 ## testing set = day 1942 onwards
