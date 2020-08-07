@@ -1,4 +1,4 @@
-# kaggle_M5comp
+# Kaggle_M5_Competition
 
 This repository contains my submission to the M5 Forecasting - Accuracy competition found on Kaggle (https://www.kaggle.com/c/m5-forecasting-accuracy). A brief description of the project was taken from the website and described below:
 
