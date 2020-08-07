@@ -6,7 +6,7 @@ Created on Tue Jun 23 09:52:44 2020
 """
 import numpy as np
 import pandas as pd
-# import plotly.express as px
+import plotly.express as px
 import gc
 import joblib
 from lightgbm import LGBMRegressor
@@ -78,8 +78,6 @@ prices = pd.read_pickle("./prices.pkl")
 ## Melt Sales dataframe to have key column identifiers of ID, item ID, department ID, category ID, store ID and state ID
 ## Melt unpivots columns not specified by id_vars to be used as values in the table
 ## id_vars are the columns which will not be unpivoted - will still be used as the reference index
-
-
 df = pd.melt(sales, id_vars=['id', 'item_id', 'dept_id', 'cat_id', 'store_id', 'state_id'], var_name='d', value_name='sold').dropna()
 
 ## Merge calendar and prices dataframes into df
@@ -87,19 +85,19 @@ df = pd.merge(df, calendar, on='d', how='left')
 df = pd.merge(df, prices, on=['store_id','item_id','wm_yr_wk'], how='left') 
 
 
-# ## EXPLORATORY DATA ANALYSIS ## 
-# ## Check average sale price for each item
-# ## the groupby function, groups together specific columns and column values. Here I specify that I want the
-# ## average sell price to be from each state, store and item
-# group_price_store = df.groupby(['state_id','store_id','item_id'],as_index=False)['sell_price'].mean().dropna()
+## EXPLORATORY DATA ANALYSIS ## 
+## Check average sale price for each item
+## the groupby function, groups together specific columns and column values. Here I specify that I want the
+## average sell price to be from each state, store and item
+group_price_store = df.groupby(['state_id','store_id','item_id'],as_index=False)['sell_price'].mean().dropna()
 
-# ## Using plotly express, plot the prices vs the store. Display different colours for the state and use the hover
-# ## property to identify which item is present
-# fig = px.violin(group_price_store, x='store_id', color='state_id', y='sell_price',box=True, hover_name='item_id')
-# fig.update_xaxes(title_text='Store')
-# fig.update_yaxes(title_text='Selling Price($)')
-# fig.update_layout(template='seaborn',title='Distribution of Items prices wrt Stores',legend_title_text='State')
-# fig.show()
+## Using plotly express, plot the prices vs the store. Display different colours for the state and use the hover
+## property to identify which item is present
+fig = px.violin(group_price_store, x='store_id', color='state_id', y='sell_price',box=True, hover_name='item_id')
+fig.update_xaxes(title_text='Store')
+fig.update_yaxes(title_text='Selling Price($)')
+fig.update_layout(template='seaborn',title='Distribution of Items prices wrt Stores',legend_title_text='State')
+fig.show()
 
 
 ## FEATURE ENGINEERING ## 
